@@ -1,6 +1,6 @@
 *B. Base SAS Programming Using SAS Studio on SAS Viya;
 
-*1. Data pre – processing;
+*Exercise 1 - Data pre – processing;
 
 /*
 For every invoice calculate the number of SKU’s that are related to it ‘Invoice total
@@ -91,3 +91,37 @@ run;
 proc means data=project.invoices_total_values;
 	var Invoice_Total_Values;
 run;
+
+/*
+Divide the observations of the table 'Invoice’ into two new tables where in the one
+the Sales transactions will be stored where as in the second the Returns transactions
+will be stored. This division must be done using the variable ‘Operation’. This action
+since it is not stated differently should be completed using the data step.
+*/
+
+data project.invoice_sales project.invoice_return;
+	set project.invoice;
+	if Operation = 'Sale' then output project.invoice_sales;
+	else if Operation = 'Return' then output  project.invoice_return;
+run;
+
+/*
+Calculate the customer’s age based on the fact that today’s date is 01/01/2019 and
+store it into a new variable (check the validity of the dates e.g. birth year greater
+than 1910 and less than 2001). Show integer values of the age without decimals.
+*/
+
+data project.customers;
+	set project.customers;
+	if 1910 < Year_Of_Birth < 2001 then do;
+		Birth_Date = mdy(Month_Of_Birth, Day_Of_Birth, Year_Of_Birth);
+		Today = mdy(1,1,2019);
+		Age = int((Today - Birth_Date)/365.25);
+		drop Birth_Date Today;
+	end;
+run;
+
+*Exercise 2 - Describe and explain using graphs who is your customer. What is the profile of the
+audience to which the company’s products are targeted?;
+
+
