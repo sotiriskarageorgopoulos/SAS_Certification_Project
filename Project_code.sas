@@ -124,4 +124,256 @@ run;
 *Exercise 2 - Describe and explain using graphs who is your customer. What is the profile of the
 audience to which the company’s products are targeted?;
 
+/* 
+What are the demographic characteristics i.e. age, gender and region of the
+company’s customers? 
+*/
 
+/*Customers gender in pie chart*/
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Gender / stat=pct;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.CUSTOMERS;
+run;
+
+ods graphics / reset;
+
+/*Customers regions in horizontal bar chart*/
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.CUSTOMERS;
+	hbar Region /;
+	xaxis grid;
+run;
+
+ods graphics / reset;
+
+/*Adult customers age range in horizontal box plot*/
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.CUSTOMERS;
+	hbox Age / boxwidth=0.4;
+	xaxis grid;
+run;
+
+ods graphics / reset;
+
+/*
+Based on the age variable, create a new variable entitled Age_Range that takes the
+following values:
+<18 -- > “Under 18”
+18 - 25 -- > “Very Young”
+26 - 35 -- > “Young”
+36 - 50 -- > “Middle Age”
+51 - 65 -- > “Mature”
+66 – 75 -- > “Old”
+>= 76 -- > “Very Old”
+*/
+
+data project.customers;  
+	set project.customers;
+    length Age_Range $ 10;
+	if age = . then Age_Range = "Under 18";
+	else if 18 <= age <= 25 then Age_Range = "Very Young";
+	else if 26 <= age <= 35 then Age_Range = "Young";
+	else if 36 <= age <= 50 then Age_Range = "Middle Age";
+	else if 51 <= age <= 65 then Age_Range = "Mature";
+	else if 66 <= age <= 75 then Age_Range = "Old";
+	else if age >= 76 then Age_Range = "Very Old";
+run;
+
+/*
+What are the behavioral characteristics of each age group? (visits to the stores,
+number of distinct SKU’s purchased, total cost of purchases). The merging of the
+data sets must be done using exclusively the data step but the calculation of the
+statistics e.g. visits, total cost of purchases etc can be done using proc sql. Create a
+pie chart and a frequency table with the percentages of customers that belong to
+each age group. Augment your analysis by providing pie charts for the behavioral
+characteristics for each age group.
+*/
+
+
+proc sort data=project.customers out=project.customers_custid_sorted;
+	by customer_id;
+run;
+
+proc sort data=project.invoice out=project.invoice_custid_sorted;
+	by Customer_Id;
+run;
+
+proc sort data=project.basket out=project.basket_invid_sorted;
+	by Invoice_ID;
+run;
+
+data project.customers_invoice;
+	merge project.customers_custid_sorted(
+			in=ccs
+			rename=(customer_id = Customer_ID)
+		  ) 
+		  project.invoice_custid_sorted(in=ics);
+	by Customer_ID;
+	if ccs = 1 and ics = 1;
+run;
+
+proc sort data=project.customers_invoice out=project.cus_inv_invid_sorted;
+	by Invoice_ID;
+run;
+
+data project.cus_inv_bask;
+	merge project.basket_invid_sorted(in=bi)
+		  project.cus_inv_invid_sorted(in=ci);
+	by Invoice_ID;
+	if bi=1 and ci=1;
+run;
+
+proc sort data=project.cus_inv_bask out=project.cus_inv_bask_invid_sorted;
+	by Product_ID;
+run;
+
+data project.cus_inv_bask_prod;
+	merge project.cus_inv_bask_invid_sorted(in=cib)
+		  project.products_prod_id_sorted(in=ppi);	
+	by Product_ID;
+	if cib = 1 and ppi = 1;
+run;
+
+proc sort data=project.invoice out=project.invoice_invid_sorted;
+	by Invoice_ID;
+run;
+
+data project.invoice_invtv;
+	merge project.invoice_invid_sorted(in=iis)
+		  project.invoices_total_values(in=itv);
+	by Invoice_ID;
+	if iis = 1 and itv = 1;
+run;
+
+proc sort data=project.invoice_invtv out=project.invoice_invtv_cusid_sorted;
+	by Customer_ID;
+run;
+
+data project.invoice_invtv_customer;
+	merge project.invoice_invtv_cusid_sorted(in=iic)
+	      project.customers_custid_sorted(in=ccs);
+	by Customer_ID;
+	if iic = 1 and ccs = 1;
+run;
+
+/*number of visits store for each age group*/
+proc sql;
+  create table project.age_group_visits as
+	  select ci.Age_Range label='age range',
+		    count(*) AS Visits label='visits in store' format=commax5.
+	  from  project.customers_invoice ci
+	  group by ci.Age_Range;
+
+  select * from project.age_group_visits;
+quit;
+
+/*number of distinct SKU's for each age group*/
+proc sql;
+  create table project.age_group_sku as
+	 select cibp.Age_Range label='age range',
+			count(distinct(cibp.SKU)) AS SKU_Number label='number of distinct SKU'
+	 from project.cus_inv_bask_prod cibp
+	 group by cibp.Age_Range;
+
+  select * from project.age_group_sku;
+quit;
+
+/*total cost of purchases for each age group*/
+proc sql;
+	create table project.age_group_cost as
+	  select iic.Age_Range label='age range', 
+			 SUM(iic.Invoice_Total_Values) AS Total_Cost label='Total Cost' format=dollarx13.2
+	  from project.invoice_invtv_customer iic
+	  group by iic.Age_Range;
+    select * from project.age_group_cost;
+quit;
+
+/*pie chart with percentages for each age group*/
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Age_Range / stat=pct;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.CUSTOMERS;
+run;
+
+ods graphics / reset;
+
+/*Frequency table for age groups*/
+proc freq data=project.customers;
+	table Age_Range;
+run;
+
+/*pie chart for total purchase cost of every age group*/
+
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Age_Range response=Total_Cost /;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.AGE_GROUP_COST;
+run;
+
+ods graphics / reset;
+
+/*pie chart for visits of every age group*/
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Age_Range response=Visits /;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.AGE_GROUP_VISITS;
+run;
+
+ods graphics / reset;
+
+/*pie chart for disinct SKU of every age group*/
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Age_Range response=SKU_Number /;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.AGE_GROUP_SKU;
+run;
+
+ods graphics / reset;
