@@ -113,12 +113,13 @@ than 1910 and less than 2001). Show integer values of the age without decimals.
 
 data project.customers;
 	set project.customers;
-	if 1910 < Year_Of_Birth < 2001 then do;
+	if 1910 <= Year_Of_Birth <= 2019 then do;
 		Birth_Date = mdy(Month_Of_Birth, Day_Of_Birth, Year_Of_Birth);
 		Today = mdy(1,1,2019);
 		Age = int((Today - Birth_Date)/365.25);
 		drop Birth_Date Today;
 	end;
+	else delete;
 run;
 
 *Exercise 2 - Describe and explain using graphs who is your customer. What is the profile of the
@@ -182,7 +183,7 @@ following values:
 data project.customers;  
 	set project.customers;
     length Age_Range $ 10;
-	if age = . then Age_Range = "Under 18";
+	if age < 18 then Age_Range = "Under 18";
 	else if 18 <= age <= 25 then Age_Range = "Very Young";
 	else if 26 <= age <= 35 then Age_Range = "Young";
 	else if 36 <= age <= 50 then Age_Range = "Middle Age";
@@ -275,8 +276,6 @@ proc sql;
 		    count(*) AS Visits label='visits in store' format=commax5.
 	  from  project.customers_invoice ci
 	  group by ci.Age_Range;
-
-  select * from project.age_group_visits;
 quit;
 
 /*number of distinct SKU's for each age group*/
@@ -286,8 +285,6 @@ proc sql;
 			count(distinct(cibp.SKU)) AS SKU_Number label='number of distinct SKU'
 	 from project.cus_inv_bask_prod cibp
 	 group by cibp.Age_Range;
-
-  select * from project.age_group_sku;
 quit;
 
 /*total cost of purchases for each age group*/
@@ -297,7 +294,6 @@ proc sql;
 			 SUM(iic.Invoice_Total_Values) AS Total_Cost label='Total Cost' format=dollarx13.2
 	  from project.invoice_invtv_customer iic
 	  group by iic.Age_Range;
-    select * from project.age_group_cost;
 quit;
 
 /*pie chart with percentages for each age group*/
@@ -374,6 +370,169 @@ run;
 ods graphics / reset width=6.4in height=4.8in imagemap;
 
 proc sgrender template=SASStudio.Pie data=PROJECT.AGE_GROUP_SKU;
+run;
+
+ods graphics / reset;
+
+*Exercise 3 - Exploration and understanding of sales;
+
+/*
+What was the level of Sales and Returns? Create a bar chart with the monetary
+values.
+*/
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.INVOICE_INVTV;
+	vbar Operation / response=Invoice_Total_Values;
+	yaxis grid;
+run;
+
+ods graphics / reset;
+
+/*
+Create graphs for the average basket size i.e. number of SKU’s, total monetary value,
+etc and comment on your findings.
+*/
+
+data project.invoice_sales_basket;
+	merge project.invoice_sales(in=ins) 
+		  project.basket_invid_sorted(in=bis);
+	by Invoice_ID;
+	if ins = 1 and bis = 1;
+run;
+
+proc sql;
+	create table project.avg_basket_size_by_date as
+		select isb.InvoiceDate as Invoice_Date, 
+			   AVG(isb.Quantity) as Average_Basket_Size label="Average Basket Size" format=4.2
+		from project.invoice_sales_basket isb
+		group by isb.InvoiceDate;
+quit;
+
+/*Average Basket Size for all invoices in 2010 to 2011, 
+Maximum Products Sold and Minimum Products Sold.*/
+proc sql;
+	select AVG(isb.Quantity) label="Average Basket Size" format=4.2
+	from project.invoice_sales_basket isb;
+
+	create table project.products_sold_per_invoice as
+		select isb.Invoice_ID, 
+			   SUM(isb.Quantity) AS Products_Per_Invoice
+		from project.invoice_sales_basket isb
+		group by isb.Invoice_ID;
+
+	select MAX(pspi.Products_Per_Invoice) label="Maximum Products Sold" format=4.,
+		   MIN(pspi.Products_Per_Invoice) label="Minimum Products Sold" format=4.
+	from project.products_sold_per_invoice pspi;
+quit;
+
+proc sql;
+   select AVG(isb.Quantity) label="Average Basket Size" 
+   from project.invoice_sales_basket isb;
+quit;
+
+/*Histogram of average basket size for invoices from 2010 to 2011*/
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.AVG_BASKET_SIZE_BY_DATE;
+	histogram Average_Basket_Size /;
+	yaxis grid;
+run;
+ods graphics / reset;
+
+/*scatter plot of average basket size for invoices from 2010 to 2011*/
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.AVG_BASKET_SIZE_BY_DATE;
+	scatter x=Average_Basket_Size y=Invoice_Date /;
+	xaxis grid;
+	yaxis grid;
+run;
+
+ods graphics / reset;
+
+/*Create a report that shows the top products per product line and product type with
+respect to sales value in descending order. Show also the subtotal sales of each
+product type. 
+*/
+
+data project.prom_basket_prod_sales_val;
+	set project.promotions_basket_products;
+	Sales_Value = (1 - Promotion) * Product_Price * Quantity;
+run;
+
+proc contents data=project.prom_basket_prod_sales_val;
+run;
+
+proc sql;
+  create table project.sales_value_by_product as
+	select pbp.Product_Line, 
+		   pbp.Product_Type, 
+		   SUM(pbp.Sales_Value) as Sales_Value format=dollarx13.2
+	from project.prom_basket_prod_sales_val pbp
+	group by pbp.Product_Line, pbp.Product_Type;
+quit;
+
+proc sort data=project.sales_value_by_product;
+	by descending Sales_Value;
+run;
+
+proc print data=project.sales_value_by_product noobs;
+run;
+
+proc sql;
+	create table project.sales_by_product_type as 
+	  select pbp.Product_Type,
+			 SUM(pbp.Quantity) as Sales format=commax6.
+	  from project.promotions_basket_products pbp
+	  group by pbp.Product_Type;
+run;
+
+proc sort data=project.sales_by_product_type;
+	by descending Sales;
+run;
+
+proc print data=project.sales_by_product_type noobs;
+run;
+
+/*
+Use graphs to show the contribution to the company’s revenues of each region of
+the country.
+*/
+proc sort data=project.prom_basket_prod_sales_val;
+	by Invoice_ID;
+run;
+
+data project.prom_basket_prod_inv;
+	merge project.prom_basket_prod_sales_val project.invoice; 
+	by Invoice_ID;
+run;
+
+proc sort data=project.prom_basket_prod_inv out=project.prom_bask_prod_inv_cusid_sorted;
+	by Customer_ID;
+run;
+
+data project.prom_basket_prod_inv_cus;
+	merge project.prom_bask_prod_inv_cusid_sorted(in=pbp)
+		  project.customers(in=cus);
+	by Customer_ID;
+	if pbp = 1 and cus = 1;
+run;
+
+proc sql;
+	create table project.revenues_by_region as
+		select pbp.Region, 
+			   SUM(pbp.Sales_Value) as Sales_Value format=dollarx13.2
+		from project.prom_basket_prod_inv_cus pbp
+		group by pbp.Region;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.REVENUES_BY_REGION;
+	vbar Region / response=Sales_Value;
+	yaxis grid;
 run;
 
 ods graphics / reset;
