@@ -35,12 +35,14 @@ data project.invoice_items;
 	if first.Invoice_ID then Invoice_Total_Items = 1;
 	else Invoice_Total_Items = Invoice_Total_Items + 1;
 
-	if last.Invoice_Total_Items then output;
+	if last.Invoice_ID then output;
 
 	label Invoice_Total_Items = 'Invoice total items';
 	keep Invoice_ID Invoice_Total_Items;
 run;
 
+proc print data=project.invoice_items(obs=10) noobs;
+run;
 /*
 For every invoice calculate the total value of the SKU’s that are related to it ‘Invoice
 total value’. Beware that there exist price discounts that can be seen in the
@@ -563,7 +565,7 @@ proc sql;
 		from project.prom_basket_prod_inv_cus pbp
 		where pbp.Region = 'SP'
 		group by pbp.Gender;
-run;
+quit;
 
 proc template;
 	define statgraph SASStudio.Pie;
@@ -582,3 +584,134 @@ run;
 
 ods graphics / reset;
 
+*Exercise 4 - Zoom into the promotional activities by answering the following questions;
+
+proc format;
+	value prom_fmt 0 = 'No Promotion'
+				   0.1-0.3 = 'Promotion';
+run;
+
+data project.promotions_basket_products;
+	set project.promotions_basket_products;
+	format Promotion $prom_fmt.;
+run;
+
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Promotion / stat=pct;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.PROMOTIONS_BASKET_PRODUCTS;
+run;
+
+ods graphics / reset;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.PROMOTIONS_BASKET_PRODUCTS;
+	vbar Promotion / stat=percent;
+	yaxis grid;
+run;
+
+ods graphics / reset;
+
+/*Create pie charts to show the percentage of products that are sold on each
+promotion type (use the description of the promotion and not its code). Do not
+include the products sold without promotion.*/
+proc format;
+	value prom_type_fmt 0.1 = 'Promotion 10%'
+						0.2 = 'Promotion 20%'
+						0.3 = 'Promotion 30%';
+run;
+
+data project.pbp_without_no_promotion;
+	set project.promotions_basket_products;
+	format Promotion $prom_type_fmt.;
+	if Promotion = 0 then delete;
+run;
+
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Promotion / stat=pct;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.PBP_WITHOUT_NO_PROMOTION;
+run;
+
+ods graphics / reset;
+
+/*
+What is the distribution of sales per day of the week? Is there any difference among
+the various days with respect to the number of distinct SKU’s per invoice. In order to
+find the day of the week when the sale takes place use the weekday function.
+*/
+proc format;
+	value day_name_fmt 1 = 'SUNDAY'
+					   2 = 'MONDAY'
+					   3 = 'TUESDAY'
+					   4 = 'WEDNESDAY'
+					   5 = 'THURSDAY'
+					   6 = 'FRIDAY'
+					   7 = 'SATURDAY';
+run;
+
+data project.invoice_sales_per_day;
+	merge project.invoice_sales(in=is)
+		  project.invoice_items(in=ii);
+	by Invoice_ID;
+	if ii = 1 and is = 1;
+	Day = weekday(InvoiceDate);
+	format Day $day_name_fmt.;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.INVOICE_SALES_PER_DAY;
+	vbar Day / response=Invoice_Total_Items;
+	yaxis grid;
+run;
+
+ods graphics / reset;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sort data=project.products_basket out=project.products_basket_invid_sorted;
+	by Invoice_ID;
+run;
+
+data project.ispd_basket_products;
+	merge project.products_basket_invid_sorted(in=pbi)
+		  project.invoice_sales_per_day(in=isd);
+	by Invoice_ID;
+	if pbi = 1 and isd = 1;
+run;
+
+proc sql;
+  create table project.distinct_sku_per_day as
+	 select ibp.Day, COUNT(DISTINCT(ibp.SKU)) AS SKU_Number label="Number of distinct SKU's"
+	 from project.ispd_basket_products ibp
+	 group by ibp.Day;
+quit;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.DISTINCT_SKU_PER_DAY;
+	vbar Day / response=SKU_Number;
+	yaxis grid;
+run;
+
+ods graphics / reset;
