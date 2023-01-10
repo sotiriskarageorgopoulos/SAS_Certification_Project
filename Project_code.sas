@@ -536,3 +536,49 @@ proc sgplot data=PROJECT.REVENUES_BY_REGION;
 run;
 
 ods graphics / reset;
+
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Region response=Sales_Value /;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.REVENUES_BY_REGION;
+run;
+
+ods graphics / reset;
+
+/*For the top region found in the previous question show the contribution to the
+company’s revenues per gender.*/
+
+proc sql;
+	create table project.revenue_per_gender_sp as
+		select pbp.Gender, SUM(pbp.Sales_Value) AS Revenue label="Revenue" format=dollarx13.2
+		from project.prom_basket_prod_inv_cus pbp
+		where pbp.Region = 'SP'
+		group by pbp.Gender;
+run;
+
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Gender response=Revenue /;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=PROJECT.REVENUE_PER_GENDER_SP;
+run;
+
+ods graphics / reset;
+
