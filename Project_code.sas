@@ -586,13 +586,22 @@ ods graphics / reset;
 
 *Exercise 4 - Zoom into the promotional activities by answering the following questions;
 
+/*
+Use graphs to show what is the percentage of products that are sold without
+promotion and what is the percentage of products sold with promotion. Create a
+format to display the 0% promotion as “No Promotion” and the 10%, 20% and 30%
+as “Promotion”.
+*/
 proc format;
 	value prom_fmt 0 = 'No Promotion'
 				   0.1-0.3 = 'Promotion';
 run;
 
-data project.promotions_basket_products;
-	set project.promotions_basket_products;
+data project.prom_basket_prod_inv_sales;
+	merge project.prom_basket_prod_inv_id_sorted(in=pbp)
+		  project.invoice_sales(in=is);
+	by Invoice_ID;
+	if pbp = 1 and is = 1;
 	format Promotion $prom_fmt.;
 run;
 
@@ -608,15 +617,15 @@ run;
 
 ods graphics / reset width=6.4in height=4.8in imagemap;
 
-proc sgrender template=SASStudio.Pie data=PROJECT.PROMOTIONS_BASKET_PRODUCTS;
+proc sgrender template=SASStudio.Pie data=PROJECT.PROM_BASKET_PROD_INV_SALES;
 run;
 
 ods graphics / reset;
 
 ods graphics / reset width=6.4in height=4.8in imagemap;
 
-proc sgplot data=PROJECT.PROMOTIONS_BASKET_PRODUCTS;
-	vbar Promotion / stat=percent;
+proc sgplot data=PROJECT.PROM_BASKET_PROD_INV_SALES;
+	vbar Promotion /;
 	yaxis grid;
 run;
 
@@ -631,8 +640,8 @@ proc format;
 						0.3 = 'Promotion 30%';
 run;
 
-data project.pbp_without_no_promotion;
-	set project.promotions_basket_products;
+data project.pbpis_without_no_promotion;
+	set project.prom_basket_prod_inv_sales;
 	format Promotion $prom_type_fmt.;
 	if Promotion = 0 then delete;
 run;
@@ -649,7 +658,7 @@ run;
 
 ods graphics / reset width=6.4in height=4.8in imagemap;
 
-proc sgrender template=SASStudio.Pie data=PROJECT.PBP_WITHOUT_NO_PROMOTION;
+proc sgrender template=SASStudio.Pie data=PROJECT.PBPIS_WITHOUT_NO_PROMOTION;
 run;
 
 ods graphics / reset;
