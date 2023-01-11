@@ -724,3 +724,111 @@ proc sgplot data=PROJECT.DISTINCT_SKU_PER_DAY;
 run;
 
 ods graphics / reset;
+
+/* Exercise 5
+It should be also mentioned that the SKU of each product contains “hidden”
+information. The ninth (9
+th) digit indicates the company that supplied the product
+(supplier). In order to unhide this piece of information use relevant functions and then
+store it to a new column. If we assume that an SKU is 58720443450301, then the
+supplier code is 4.
+*/
+
+data project.products_sup_code;
+	set project.products;
+	SKU_string = put(SKU, 19.);
+	Supplier_Code = input(substr(strip(SKU_string),9,1), 1.);
+	keep Product_ID Supplier_Code;
+run;
+
+/*
+Create a frequency report and a relevant chart to show the percentage of products
+sold by each supplier (use the name of the supplier and not its code). Weight the
+frequency of the SKU by the quantity sold. This will show the supplier with the
+highest demand.
+*/
+proc sort data=project.prom_basket_prod_sales_val out=project.prom_bask_prod_sv_sorted;
+	by Product_ID;
+run;
+
+data project.is_prod_bask_sup_code;
+	merge project.prom_bask_prod_sv_sorted(in=ibp)
+		  project.products_sup_code(in=psc); 
+	by Product_ID;
+	if ibp = 1 and psc = 1;
+run;
+
+proc sort data=project.is_prod_bask_sup_code out=project.is_prod_bask_sc_sorted;
+   by Supplier_Code;
+run;
+
+data project.is_prod_bask_sup;
+	merge project.is_prod_bask_sc_sorted(in=ipb rename=(Supplier_Code=Supplier_ID))
+		  project.suppliers(in=sup);
+	by Supplier_ID;
+	if sup = 1 and ipb = 1;
+	format Sales_Value dollar15.2;
+	label Sales_Value='Sales Value';
+run;
+
+proc freq data=project.is_prod_bask_sup;
+	tables Supplier_Name;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.IS_PROD_BASK_SUP;
+	vbar Supplier_Name / response=Quantity;
+	yaxis grid;
+run;
+
+ods graphics / reset;
+
+/*
+Create graphs to show the percentage and actual revenues of products sold by each
+supplier (use the name of the supplier and not its code).
+*/
+
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=Supplier_Name response=Sales_Value /;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=12in height=6in imagemap;
+
+proc sgplot data=PROJECT.IS_PROD_BASK_SUP;
+	vbar Supplier_Name / response=Sales_Value stat=percent;
+	yaxis grid;
+run;
+
+ods graphics / reset;
+
+/*
+Create a cross tabulation table to show the total revenue of the company with
+respect to the origins of the products sold by each supplier (Use the names of the
+suppliers and the names of the countries of origins and not their codes. Put the total
+revenue in the middle of the cross tabulation, the origin in the rows and the
+suppliers in the columns). For this task you have to use proc tabulate (find relevant
+instructions in the web or in sas help).
+*/
+proc sort data=project.is_prod_bask_sup out=project.is_prod_bask_sup_sorted;
+	by Product_Origin;
+run;
+
+data project.is_prod_bask_sup_po;
+	merge project.is_prod_bask_sup_sorted(in=ipb)
+		  project.product_origin(in=po rename=(Code=Product_Origin));
+	by Product_Origin;
+	if ipb = 1 and po = 1;
+run;
+
+proc tabulate data=project.is_prod_bask_sup_po format=dollar14.2;
+	class Country Supplier_Name;
+	var Sales_Value;
+	table Country, Sales_Value *(Supplier_Name) *(SUM);
+run;
