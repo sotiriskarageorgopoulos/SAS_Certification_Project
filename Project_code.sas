@@ -832,3 +832,29 @@ proc tabulate data=project.is_prod_bask_sup_po format=dollar14.2;
 	var Sales_Value;
 	table Country, Sales_Value *(Supplier_Name) *(SUM);
 run;
+
+/*
+The company wants to profile its customers based on their importance so as to offer
+them personalized services and products. The customer segmentation is asked to be
+done based on the three parameters of the RFM model. Before the application of
+the RFM model the RFM data set should be created. It is reminded that the RFM
+model is based on the following three parameters:
+	Recency - How recently did the customer purchase?
+	Frequency - How often do they purchase?
+	MonetaryValue - How much do they spend?
+For this task proc sql can be used. For the calculation of R, F, M the following
+functions will be useful: max, sum, count and intck (For the intck use the argument
+week and the argument 16/12/2011 for today’s date).
+For the creation of the variable Monetary, the price, quantity and promotion
+variables should be used.
+*/
+
+proc sql;
+	create table project.rfm_dataset as
+		select pbp.Customer_ID label="Customer ID",
+			   intck('month',max(pbp.InvoiceDate),'16dec2011'd) as Recency label="Recency",
+			   count(pbp.Customer_ID) as Frequency label="Frequency",
+			   sum(pbp.Sales_Value) as MonetaryValue label="Monetary Value" format=dollar15.2
+		from project.PROM_BASKET_PROD_INV_CUS pbp
+		group by pbp.Customer_ID;
+quit;
