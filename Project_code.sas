@@ -57,6 +57,7 @@ run;
 data project.promotions_basket_products;
 	merge project.promotions(in=pr) project.products_basket_prom_id_sorted(in=pb);
 	by Promotion_ID;
+	rename 'Product Type'n = Product_Type;
 	if pb = 1 and pr = 1;
 run;
 
@@ -115,7 +116,7 @@ than 1910 and less than 2001). Show integer values of the age without decimals.
 
 data project.customers;
 	set project.customers;
-	if 1910 <= Year_Of_Birth <= 2019 then do;
+	if 1910 <= Year_Of_Birth <= 2001 then do;
 		Birth_Date = mdy(Month_Of_Birth, Day_Of_Birth, Year_Of_Birth);
 		Today = mdy(1,1,2019);
 		Age = int((Today - Birth_Date)/365.25);
@@ -462,6 +463,7 @@ product type.
 data project.prom_basket_prod_sales_val;
 	set project.promotions_basket_products;
 	Sales_Value = (1 - Promotion) * Product_Price * Quantity;
+	rename 'Product Line'n=Product_Line 'Product Type'n=Product_Type;
 run;
 
 proc contents data=project.prom_basket_prod_sales_val;
