@@ -860,3 +860,27 @@ proc sql;
 		from project.PROM_BASKET_PROD_INV_CUS pbp
 		group by pbp.Customer_ID;
 quit;
+
+/*
+Create customer segments by analyzing the RFM data set from the previous
+question using SAS Visual Data Mining and Machine Learning and the three
+parameters of the RFM model. It should be underlined that in order for the cluster
+analysis to produce logical results the customers with extreme values of the
+variables R, F, M should be excluded from the analysis. Also, if needed, the R, F, M
+variables might be needed to be transformed. After the clusters are created in SAS
+VDMML they should be profiled as shown in class by using SAS Visual Analytics.
+Finally, the two most important clusters (justify why the selected ones are the most
+important) should be further profiled by using the customer’s demographic data
+(age, gender and country). 
+*/
+
+data project.rfm_demographic;
+	merge project.rfm_dataset(in=rfm)
+		  project.customers(in=cus);
+	by Customer_ID;
+	if rfm = 1 and cus = 1;
+	Target = 0;
+	drop First_Name Last_Name 
+		  Address Postal_Code Day_Of_Birth
+		  Month_Of_Birth Year_Of_Birth;
+run;
