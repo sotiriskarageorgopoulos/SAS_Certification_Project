@@ -836,6 +836,7 @@ proc tabulate data=project.is_prod_bask_sup_po format=dollar14.2;
 run;
 
 /*
+Exercise 6
 The company wants to profile its customers based on their importance so as to offer
 them personalized services and products. The customer segmentation is asked to be
 done based on the three parameters of the RFM model. Before the application of
@@ -862,6 +863,7 @@ proc sql;
 quit;
 
 /*
+Exercise 7
 Create customer segments by analyzing the RFM data set from the previous
 question using SAS Visual Data Mining and Machine Learning and the three
 parameters of the RFM model. It should be underlined that in order for the cluster
@@ -883,4 +885,64 @@ data project.rfm_demographic;
 	drop First_Name Last_Name 
 		  Address Postal_Code Day_Of_Birth
 		  Month_Of_Birth Year_Of_Birth;
+run;
+
+/*
+Exercise 8
+The company is interested to change internally the store based on the products that
+tend to be bought together. In order to apply this initiative the company must be
+sure about the associations among the product names. You are asked to find which
+products are bought together (associations of product names) in the whole data set.
+Then find the associations among products in the two most important clusters
+(according to your business thinking) previously identified so if a customer is found
+to belong in one of them to receive the most suitable/ best proposals/ offers. For
+this task Base SAS should be used to filter the customers that belong to the two
+most important clusters, create the two relevant data sets and then these data sets
+to be analyzed using association rules through SAS Studio. 
+*/
+
+cas; 
+caslib _all_ assign;
+
+proc format;
+	value profile 1 = 'Churner'
+				  2 = 'Worst'
+				  3 = 'Best';
+run;
+
+data project.customers_profiling;
+	set casuser.customer_profiling_project(rename=(_Cluster_ID_= Customer_Profile));
+	keep Customer_ID Customer_Profile Frequency 
+		 Monetary Recency Age Gender Region;
+	format Customer_Profile $profile.;
+run;
+
+data project.cus_prof_inv;
+	merge project.customers_profiling(in=cup)
+		  project.invoice(in=inv);
+	if cup=1 and inv=1;
+run;
+
+data project.cus_prof_inv_bask;
+	merge project.cus_prof_inv(in=cpi)
+		  project.basket(in=bas);
+	if cpi=1 and bas=1;
+run;
+
+data project.cus_prof_inv_bask_prod;
+	merge project.cus_prof_inv_bask(in=cpi)
+		  project.products(in=pro);
+	if cpi=1 and pro=1;
+run;
+
+data project.customers_churners;
+	set project.cus_prof_inv_bask_prod;
+	if Customer_Profile = 1;
+	drop Customer_Profile;
+run;
+
+data project.customers_worst;
+	set project.cus_prof_inv_bask_prod;
+	if Customer_Profile = 2;
+	drop Customer_Profile;
 run;
