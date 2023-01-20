@@ -935,6 +935,10 @@ data project.cus_prof_inv_bask_prod;
 	if cpi=1 and pro=1;
 run;
 
+data casuser.cus_prof_inv_bask_prod;
+	set project.cus_prof_inv_bask_prod;
+run;
+
 data project.customers_churners;
 	set project.cus_prof_inv_bask_prod;
 	if Customer_Profile = 1;
@@ -945,4 +949,38 @@ data project.customers_worst;
 	set project.cus_prof_inv_bask_prod;
 	if Customer_Profile = 2;
 	drop Customer_Profile;
+run;
+
+data casuser.customers_churners;
+	set project.customers_churners;
+run;
+
+data casuser.customers_worst;
+	set project.customers_worst;
+run;
+
+ods noproctitle;
+
+proc mbanalysis data=CASUSER.CUS_PROF_INV_BASK_PROD conf=0.1 items=4 
+		pctsupport=0.05;
+	target Product;
+	customer Invoice_ID;
+	output outrule=CASUSER.ALL_CUSTOMERS_MBA;
+run;
+
+ods noproctitle;
+
+proc mbanalysis data=CASUSER.CUSTOMERS_CHURNERS conf=0.1 items=4 
+		pctsupport=0.05;
+	target Product;
+	customer Invoice_ID;
+	output outrule=CASUSER.CHURNERS_MBA;
+run;
+
+ods noproctitle;
+
+proc mbanalysis data=CASUSER.CUSTOMERS_WORST conf=0.1 items=4 pctsupport=0.05;
+	target Product;
+	customer Invoice_ID;
+	output outrule=CASUSER.WORST_CUSTOMERS_MBA;
 run;
