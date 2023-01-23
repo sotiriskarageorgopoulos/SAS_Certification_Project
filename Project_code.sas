@@ -985,3 +985,39 @@ proc mbanalysis data=CASUSER.CUSTOMERS_WORST conf=0.1 items=4 pctsupport=0.05;
 	customer Invoice_ID;
 	output outrule=CASUSER.WORST_CUSTOMERS_MBA;
 run;
+
+/*
+The company wants to promote a specific product category (more specifically category
+97) and want to send discount coupons for this category to customers. Since it cannot
+send coupons to the whole customer base it decided to use predictive analytics so as to
+send the coupons only to those customers that have the biggest probability to use the
+coupons, i.e., to buy the specific category. So, it took a sample of customers, it sent to
+them coupons and recorded which of those customers bought category 97 or not. The 
+relevant data are stored in the data set customersAboutClass97.xlsx. The percentage of
+customers that bought category 97 is 30% and the percentage of customers that did not
+buy category 97 is 70%. The company will use this data set to build a predictive model
+and then it will apply the model to new data.
+*/
+
+/*
+Are there any missing values in the variables of the dataset? Provide a screenshot
+form the software to prove it.
+*/
+
+proc format;
+ value $miss_fmt ' '='Missing' other='Not Missing';
+ value  miss_fmt  . ='Missing' other='Not Missing';
+run;
+
+proc freq data=project.CUSTOMERSABOUTCLASS97; 
+format _CHAR_ $miss_fmt.; 
+tables _CHAR_ / missing missprint nocum nopercent;
+format _NUMERIC_ miss_fmt.;
+tables _NUMERIC_ / missing missprint nocum nopercent;
+run;
+
+*The missing customer code has been removed;
+data project.cusaboutclass97_without_missvals;
+	set project.CUSTOMERSABOUTCLASS97;
+	if not(missing(Customer_code));
+run;
