@@ -910,6 +910,7 @@ proc format;
 				  3 = 'Best';
 run;
 
+*You must load file casuser.customer_profiling_project;
 data project.customers_profiling;
 	set casuser.customer_profiling_project(rename=(_Cluster_ID_= Customer_Profile));
 	keep Customer_ID Customer_Profile Frequency 
@@ -919,8 +920,8 @@ run;
 
 data project.cus_prof_inv;
 	merge project.customers_profiling(in=cup)
-		  project.invoice(in=inv);
-	if cup=1 and inv=1;
+		  project.invoice_sales(in=ins);
+	if cup=1 and ins=1;
 run;
 
 data project.cus_prof_inv_bask;
