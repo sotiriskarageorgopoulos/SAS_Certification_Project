@@ -466,9 +466,6 @@ data project.prom_basket_prod_sales_val;
 	rename 'Product Line'n=Product_Line 'Product Type'n=Product_Type;
 run;
 
-proc contents data=project.prom_basket_prod_sales_val;
-run;
-
 proc sql;
   create table project.sales_value_by_product as
 	select pbp.Product_Line, 
@@ -487,10 +484,10 @@ run;
 
 proc sql;
 	create table project.sales_by_product_type as 
-	  select pbp.Product_Type,
-			 SUM(pbp.Quantity) as Sales format=commax6.
-	  from project.promotions_basket_products pbp
-	  group by pbp.Product_Type;
+	  select pbp.Product_Line,
+			 SUM(pbp.Sales_Value) as Sales format=dollarx13.2
+	  from project.prom_basket_prod_sales_val pbp
+	  group by pbp.Product_Line;
 run;
 
 proc sort data=project.sales_by_product_type;
