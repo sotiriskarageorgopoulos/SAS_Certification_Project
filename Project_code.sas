@@ -679,9 +679,9 @@ run;
 
 data project.invoice_sales_per_day;
 	merge project.invoice_sales(in=is)
-		  project.invoice_items(in=ii);
+		  project.invoices_total_values(in=itv);
 	by Invoice_ID;
-	if ii = 1 and is = 1;
+	if itv = 1 and is = 1;
 	Day = weekday(InvoiceDate);
 	format Day $day_name_fmt.;
 run;
@@ -689,13 +689,11 @@ run;
 ods graphics / reset width=6.4in height=4.8in imagemap;
 
 proc sgplot data=PROJECT.INVOICE_SALES_PER_DAY;
-	vbar Day / response=Invoice_Total_Items;
+	vbar Day / response=Invoice_Total_Values;
 	yaxis grid;
 run;
 
 ods graphics / reset;
-
-ods graphics / reset width=6.4in height=4.8in imagemap;
 
 proc sort data=project.products_basket out=project.products_basket_invid_sorted;
 	by Invoice_ID;
