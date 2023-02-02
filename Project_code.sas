@@ -786,6 +786,15 @@ Create graphs to show the percentage and actual revenues of products sold by eac
 supplier (use the name of the supplier and not its code).
 */
 
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=PROJECT.IS_PROD_BASK_SUP;
+	hbar Supplier_Name / response=Sales_Value stat=percent;
+	xaxis grid;
+run;
+
+ods graphics / reset;
+
 proc template;
 	define statgraph SASStudio.Pie;
 		begingraph;
@@ -796,11 +805,9 @@ proc template;
 	end;
 run;
 
-ods graphics / reset width=12in height=6in imagemap;
+ods graphics / reset width=6.4in height=6.4in imagemap;
 
-proc sgplot data=PROJECT.IS_PROD_BASK_SUP;
-	vbar Supplier_Name / response=Sales_Value stat=percent;
-	yaxis grid;
+proc sgrender template=SASStudio.Pie data=PROJECT.IS_PROD_BASK_SUP;
 run;
 
 ods graphics / reset;
