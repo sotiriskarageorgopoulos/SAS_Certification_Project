@@ -922,8 +922,8 @@ run;
 
 data project.cus_prof_inv;
 	merge project.customers_profiling(in=cup)
-		  project.invoice_sales(in=ins);
-	if cup=1 and ins=1;
+		  project.invoice(in=inv);
+	if cup=1 and inv=1;
 run;
 
 data project.cus_prof_inv_bask;
@@ -964,7 +964,11 @@ run;
 
 ods noproctitle;
 
-proc mbanalysis data=CASUSER.CUS_PROF_INV_BASK_PROD conf=0.1 items=4 
+data  casuser.PRODUCTS_BASKET;
+	set project.PRODUCTS_BASKET;
+run;
+
+proc mbanalysis data=casuser.PRODUCTS_BASKET conf=0.1 items=4 
 		pctsupport=0.05;
 	target Product;
 	customer Invoice_ID;
