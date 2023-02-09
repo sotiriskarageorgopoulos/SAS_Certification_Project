@@ -926,9 +926,20 @@ data project.cus_prof_inv;
 	if cup=1 and inv=1;
 run;
 
+data project.basket_MBA;
+	set project.basket;
+	where Invoice_ID is not missing and Product_ID is not missing;
+	keep Invoice_ID Product_ID;
+run;
+
+*The duplicate observation removed because it is required for MBA;
+proc sort data=project.basket_MBA noduprecs;
+	by Product_ID;
+run;
+
 data project.cus_prof_inv_bask;
 	merge project.cus_prof_inv(in=cpi)
-		  project.basket(in=bas);
+		  project.basket_MBA(in=bas);
 	if cpi=1 and bas=1;
 run;
 
@@ -964,11 +975,18 @@ run;
 
 ods noproctitle;
 
-data  casuser.PRODUCTS_BASKET;
-	set project.PRODUCTS_BASKET;
+data project.PRODUCTS_BASKET_MBA;
+	merge project.basket_mba(in=bas)
+		  project.products(in=prod);
+	by Product_ID;
+	if prod = 1 and bas = 1;
 run;
 
-proc mbanalysis data=casuser.PRODUCTS_BASKET conf=0.1 items=4 
+data casuser.PRODUCTS_BASKET_MBA;
+	set project.PRODUCTS_BASKET_MBA;
+run;
+
+proc mbanalysis data=casuser.PRODUCTS_BASKET_MBA conf=0.1 items=4 
 		pctsupport=0.05;
 	target Product;
 	customer Invoice_ID;
